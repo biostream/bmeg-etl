@@ -281,3 +281,12 @@ class HasGene(Edge):
     Allele -> Gene
     """
     pass
+
+
+@enforce_types
+@dataclass(frozen=True)
+class ProteinInteraction(Edge):
+    """
+    Protein -> Protein
+    """
+    pass
