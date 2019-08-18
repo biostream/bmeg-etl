@@ -9,11 +9,12 @@ import json
 import logging
 
 EXPECTED_COUNTS = [
-    {'_from': 'Sample', 'to': 'Case', 'via': 'SampleFor', 'expected_count': 76883, 'expected_time': 22},
-    {'_from': 'Case', 'to': 'Project', 'via': 'InProject', 'expected_count': 45459, 'expected_time': 11},
-    {'_from': 'Aliquot', 'to': 'Sample', 'via': 'AliquotFor', 'expected_count': 849801, 'expected_time': 50},
-    {'_from': 'Protein', 'to': 'PFAMFamily', 'via': 'PFAMAlignment', 'expected_count': 87547, 'expected_time': 30},
-    {'_from': 'Protein', 'to': 'Transcript', 'via': 'ProteinFor', 'expected_count': 94446, 'expected_time': 29},
+    {'_from': 'Sample', 'to': 'Case', 'via': 'case', 'expected_count': 79239, 'expected_time': 20},
+    {'_from': 'Case', 'to': 'Project', 'via': 'projects', 'expected_count': 37861, 'expected_time': 10},
+    {'_from': 'Aliquot', 'to': 'Sample', 'via': 'sample', 'expected_count': 853494, 'expected_time': 200},
+    {'_from': 'Protein', 'to': 'PfamFamily', 'via': 'pfam_families', 'expected_count': 87547, 'expected_time': 15},
+    {'_from': 'Protein', 'to': 'Transcript', 'via': 'transcript', 'expected_count': 94446, 'expected_time': 60},
+    # {'_from': 'Gene', 'to': 'Allele', 'via': 'alleles', 'expected_count': 94446, 'expected_time': 500},
 ]
 
 
@@ -36,6 +37,7 @@ def count_traversal(_from, to, expected_count, V, via=None, expected_time=60):
     else:
         q = V.hasLabel(_from).out().hasLabel(to).count()
     query_string = json.dumps(q.to_dict(), separators=(',', ':'))
+    print(list(q))
     actual_count = list(q)[0]['count']
     actual_time = watch.elapsedTime()
     via_msg = via
@@ -57,6 +59,7 @@ def test_expected_counts(V, caplog):
     caplog.set_level(logging.INFO)
     errors = []
     for traversal in EXPECTED_COUNTS:
+        print(traversal)
         error_msg = count_traversal(**traversal, V=V)
         if error_msg:
             errors.append(error_msg)
