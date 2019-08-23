@@ -9,11 +9,12 @@ import json
 import logging
 
 EXPECTED_COUNTS = [
-    {'_from': 'Sample', 'to': 'Case', 'via': 'SampleFor', 'expected_count': 76883, 'expected_time': 22},
-    {'_from': 'Case', 'to': 'Project', 'via': 'InProject', 'expected_count': 45459, 'expected_time': 11},
-    {'_from': 'Aliquot', 'to': 'Sample', 'via': 'AliquotFor', 'expected_count': 849801, 'expected_time': 50},
-    {'_from': 'Protein', 'to': 'PFAMFamily', 'via': 'PFAMAlignment', 'expected_count': 87547, 'expected_time': 30},
-    {'_from': 'Protein', 'to': 'Transcript', 'via': 'ProteinFor', 'expected_count': 94446, 'expected_time': 29},
+    {'_from': 'Sample', 'to': 'Case', 'via': 'case', 'expected_count': 79239, 'expected_time': 22},
+    {'_from': 'Case', 'to': 'Project', 'via': 'projects', 'expected_count': 37861, 'expected_time': 11},
+    {'_from': 'Aliquot', 'to': 'Sample', 'via': 'sample', 'expected_count': 853494, 'expected_time': 100},
+    {'_from': 'Protein', 'to': 'PfamFamily', 'via': 'pfam_families', 'expected_count': 87547, 'expected_time': 30},
+    {'_from': 'Protein', 'to': 'Transcript', 'via': 'transcript', 'expected_count': 94446, 'expected_time': 100},
+    # {'_from': 'Allele', 'to': 'Gene', 'via': 'gene', 'expected_count': 94446, 'expected_time': 500},
 ]
 
 
@@ -36,7 +37,9 @@ def count_traversal(_from, to, expected_count, V, via=None, expected_time=60):
     else:
         q = V.hasLabel(_from).out().hasLabel(to).count()
     query_string = json.dumps(q.to_dict(), separators=(',', ':'))
-    actual_count = list(q)[0]['count']
+    response = list(q)
+    assert len(response) == 1, f'{query_string} returned no count?'
+    actual_count = response[0]['count']
     actual_time = watch.elapsedTime()
     via_msg = via
     if not via_msg:
@@ -80,15 +83,41 @@ def test_expected_exon_transcript(V, caplog):
     assert actual_count == 4459, 'Expected from:Gene, chromosome:22 to:Transcript expected:4423 actual: {}'.format(actual_count)
 
 
+def test_allele_to_gene(E, V, caplog):
+    """Tests count of alleles with gene."""
+    caplog.set_level(logging.INFO)
+    q = (
+        E
+        .hasLabel('gene')
+        .count()
+    )
+    allele_to_gene_count = list(q)[0].count
+    q = (
+        V
+        .hasLabel('Allele')
+        .count()
+    )
+    allele_count = list(q)[0].count
+
+    q = (
+        V
+        .hasLabel('Gene')
+        .count()
+    )
+    gene_count = list(q)[0].count
+    print(f'allele_count {allele_count} allele_to_gene_count {allele_to_gene_count} gene_count {gene_count}')
+    assert False
+
+
 def test_expected_drug_response(V, caplog):
     """Tests count of samples with drugresponse."""
     caplog.set_level(logging.INFO)
     q = (
         V
         .hasLabel('DrugResponse')
-        .out('ResponseIn')
+        .out('aliquot')
         .hasLabel('Aliquot')
-        .out('AliquotFor')
+        .out('sample')
         .hasLabel('Sample')
         .count()
     )
@@ -106,19 +135,13 @@ def test_expected_allele_callset(V, caplog):
     """ subset only for one chromosome """
     caplog.set_level(logging.INFO)
     q = (
-        V.hasLabel('Gene')
-        .hasId("ENSG00000141510")
-        .in_('AlleleIn')
-        .hasLabel('Allele')
-        .in_('AlleleCall')
-        .hasLabel('Callset')
-        .count()
+        V.hasLabel('Gene').hasId("ENSG00000141510").out('alleles').hasLabel('Allele').out('somatic_callsets').count()
     )
     watch = Stopwatch()
     actual_count = list(q)[0]['count']
     actual_time = watch.elapsedTime()
     query_string = json.dumps(q.to_dict(), separators=(',', ':'))
-    assert actual_count == 5879, 'Expected Gene->AlleleIn->Allele->Callset->AlleleCall actual: {} q:{}'.format(actual_count, query_string)
+    assert actual_count == 5879, 'Expected Gene->alleles->Allele->somatic_callsets->SomaticCallset actual: {} q:{}'.format(actual_count, query_string)
     assert actual_time < 7, 'Expected Gene->AlleleIn->Allele->Callset->AlleleCall < 7 sec actual: {} q:{}'.format(actual_time, query_string)
 
 
@@ -126,12 +149,12 @@ def test_expected_g2p_associations(V, caplog):
     """ subset only for one gene """
     caplog.set_level(logging.INFO)
     q = (
-        V.hasLabel("Gene").has(eq("$.symbol", "BRCA1")).in_("HasGeneFeature")
+        V.hasLabel("Gene").has(eq("$.symbol", "BRCA1")).out("g2p_associations")
         .count()
     )
     watch = Stopwatch()
     actual_count = list(q)[0]['count']
     actual_time = watch.elapsedTime()
     query_string = json.dumps(q.to_dict(), separators=(',', ':'))
-    assert actual_count > 1, 'Expected Gene->HasGeneFeature->G2PAssociation should be more than 1 actual: {} q:{}'.format(actual_count, query_string)
-    assert actual_time < 7, 'Expected Gene->HasGeneFeature->G2PAssociation  < 7 sec actual: {} q:{}'.format(actual_time, query_string)
+    assert actual_count > 1, 'Expected Gene->g2p_associations->G2PAssociation should be more than 1 actual: {} q:{}'.format(actual_count, query_string)
+    assert actual_time < 7, 'Expected Gene->g2p_associations->G2PAssociation  < 7 sec actual: {} q:{}'.format(actual_time, query_string)

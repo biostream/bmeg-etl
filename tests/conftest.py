@@ -143,7 +143,7 @@ def helpers():
 def graph():
     """ return a connection to the bmeg graph (control w/ BMEG_URL, BMEG_GRAPH, BMEG_CREDENTIAL_FILE env var) """
     bmeg_url = os.getenv('BMEG_URL', 'https://bmeg.io/api')
-    bmeg_graph = os.getenv('BMEG_GRAPH', "bmeg_rc1_2")
+    bmeg_graph = os.getenv('BMEG_GRAPH', "bmeg_rc2")
     bmeg_credential_file = os.getenv('BMEG_CREDENTIAL_FILE', '/tmp/bmeg_credentials.json')
     return gripql.graph.Graph(url=bmeg_url, graph=bmeg_graph, credential_file=bmeg_credential_file)
 
@@ -152,6 +152,12 @@ def graph():
 def V(graph):
     """ return the Vertex in the bmeg graph """
     return graph.query().V()
+
+
+@pytest.fixture(scope="module")
+def E(graph):
+    """ return the Edge in the bmeg graph """
+    return graph.query().E()
 
 
 @pytest.fixture
